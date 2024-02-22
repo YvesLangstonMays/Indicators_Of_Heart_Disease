@@ -17,3 +17,4 @@ data <- convert_to_binary_auto(data)
 
 # View the data
 View(data)
+
