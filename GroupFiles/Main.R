@@ -1,4 +1,15 @@
+library(ggplot2)
+library(dplyr)
+
 data <- read.csv("./Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
+
+detach(data)
+attach(data)
+
+# Cleaning data
+sum(is.na(data))
+
+# There are no na values
 
 # Function that will change the variables Yes and No to numerical 1 or 0
 convert_to_binary_auto <- function(data) {
@@ -15,6 +26,39 @@ convert_to_binary_auto <- function(data) {
 # Transforming the data using the function
 data <- convert_to_binary_auto(data)
 
-# View the data
-View(data)
+
+# Checking for outliers
+ggplot(data, aes(y = BMI)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
+  coord_flip()
+
+ggplot(data, aes(y = HeightInMeters)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
+  coord_flip()
+
+# Removing outliers
+data <- data %>% 
+  filter(BMI <= 41)
+
+
+data <- data %>% 
+  filter(BMI >= 14)
+
+# Checking Data
+ggplot(data, aes(y = BMI)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
+  coord_flip()
+
+# Removing outliers
+data <- data %>% 
+  filter(HeightInMeters <= 2.1)
+
+
+data <- data %>% 
+  filter(HeightInMeters >= 1.2)
+
+# Checking Data
+ggplot(data, aes(y = HeightInMeters)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
+  coord_flip()
 
