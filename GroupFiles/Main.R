@@ -25,8 +25,6 @@ convert_to_binary_auto <- function(data) {
 
 # Transforming the data using the function
 data <- convert_to_binary_auto(data)
-
-
 # Checking for outliers
 ggplot(data, aes(y = BMI)) +
   geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
@@ -40,25 +38,23 @@ ggplot(data, aes(y = HeightInMeters)) +
 data <- data %>% 
   filter(BMI <= 41)
 
-
 data <- data %>% 
   filter(BMI >= 14)
 
+data <- data %>% 
+  filter(HeightInMeters <= 2.0)
+
+data <- data %>% 
+  filter(HeightInMeters >= 1.41)
+
 # Checking Data
 ggplot(data, aes(y = BMI)) +
-  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
-  coord_flip()
-
-# Removing outliers
-data <- data %>% 
-  filter(HeightInMeters <= 2.1)
-
-
-data <- data %>% 
-  filter(HeightInMeters >= 1.2)
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE, ) +
+  coord_flip() 
 
 # Checking Data
 ggplot(data, aes(y = HeightInMeters)) +
   geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
   coord_flip()
+
 
