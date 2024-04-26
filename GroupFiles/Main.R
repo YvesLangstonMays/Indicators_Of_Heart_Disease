@@ -1,18 +1,12 @@
 install.packages("caret")
-install.packages("keras")
-install.packages("remotes")
-install.packages("tensorflow")
 
 library(ggplot2)
 library(dplyr)
 library(caret)
-library(neuralnet)
 library(randomForest)
-library(keras)
-library(tensorflow)
-library(magrittr)
 
 data <- read.csv("./GroupFiles/Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
+
 
 detach(data)
 attach(data)
@@ -69,24 +63,17 @@ ggplot(data, aes(y = HeightInMeters)) +
   geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE) +
   coord_flip()
 
+# There is a significant difference in the number of Yes/No in our response variables
+plot(data$HadHeartAttack)
+
+# We will use a sample of the data. In this case, we will only use half of the data
+num_row = nrow(data)
+set.seed(4322)
+new_data = data[sample(num_row, num_row*0.5),]
 
 # Neural Network
 
-nn_data = data
-
-# Function that will change the variables Yes and No to numerical 1 or 0
-convert_to_binary_auto <- function(data) {
-  cols <- sapply(data, function(x) all(c("Yes", "No") %in% unique(x)))
-  cols_to_convert <- names(cols[cols == TRUE])
-
-  for (col in cols_to_convert) {
-    data[[col]] <- ifelse(data[[col]] == "Yes", 1, 0)
-  }
-
-  return(data)
-}
-# Transforming the data using the function
-nn_data <- convert_to_binary_auto(nn_data)
+nn_data = new_data
 
 # Performing as.factor() on other categorical variables
 check_and_convert_categorical <- function(test_data) {
@@ -105,42 +92,28 @@ nn_data = check_and_convert_categorical(nn_data)
 # The as.factor() function wasn't apply to the AgaCategory column since it has 13
 # levels of unique values, but we will force perform as.factor() on it anyway
 nn_data$AgeCategory = as.numeric(as.factor(nn_data$AgeCategory))
-summary(nn_data)
 
-# Find highly correlated numeric variables
-numeric_data <- nn_data[, sapply(nn_data, is.numeric)]
-corr_matrix <- cor(numeric_data)
-highly_correlated_num <- findCorrelation(corr_matrix, cutoff = 0.8)
-drop_col = colnames(numeric_data)[24]
-nn_data = nn_data[, !colnames(nn_data) %in% drop_col]
+# We will drop the State columns since it will have more than 53 levels and the 
+# Random Forest won't be able to perform.
+nn_data = nn_data[, -1]
+str(nn_data)
 
-summary(nn_data)
-# So we dropped the BMI column since it highly correlated to WeightInKilograms column
 
 # Split data
 n = nrow(nn_data)
+p = ncol(nn_data)
 
-set.seed(100)
-train = sample(n, 0.8*n)
+set.seed(4322)
+train = sample(n, 0.8*n) # Split train/test as 8:2
 
-nn_train = nn_data[train, -1]
-nn_test = nn_data[-train, -1]
-
-str(nn_train)
-
-nn_X_train = nn_train[, -which(names(nn_train) == "HadHeartAttack")]
-nn_y_train = nn_train$HadHeartAttack
-
-nn_X_test = nn_test[, -which(names(nn_test) == "HadHeartAttack")]
+nn_test = nn_data[-train, ]
+nn_X_test = nn_test[, -9]
 nn_y_test = nn_test$HadHeartAttack
-  
-# Perform neural network on training data
-library(keras)
 
-# Define your neural network model
-model <- keras_model_sequential() %>%
-  layer_dense(units = 128, activation = 'relu', input_shape = 38) %>%
-  layer_dense(units = 64, activation = 'relu') %>%
-  layer_dense(units = 1, activation = 'sigmoid')
-
-
+rf_model <- randomForest(HadHeartAttack ~., 
+                         data = nn_data,  subset = train,
+                         xtest = nn_X_test, ytest = nn_y_test,
+                         ntree = 1000, mtry =  sqrt(p),
+                         importance = TRUE)
+rf_model
+varImpPlot(rf_model)
