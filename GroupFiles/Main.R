@@ -71,9 +71,9 @@ num_row = nrow(data)
 set.seed(4322)
 new_data = data[sample(num_row, num_row*0.5),]
 
-# Neural Network
+# Random Forest
 
-nn_data = new_data
+rf_data = new_data
 
 # Performing as.factor() on other categorical variables
 check_and_convert_categorical <- function(test_data) {
@@ -87,32 +87,32 @@ check_and_convert_categorical <- function(test_data) {
   }
   return(test_data)
 }
-nn_data = check_and_convert_categorical(nn_data)
+rf_data = check_and_convert_categorical(rf_data)
 
 # The as.factor() function wasn't apply to the AgaCategory column since it has 13
 # levels of unique values, but we will force perform as.factor() on it anyway
-nn_data$AgeCategory = as.numeric(as.factor(nn_data$AgeCategory))
+rf_data$AgeCategory = as.factor(rf_data$AgeCategory)
 
 # We will drop the State columns since it will have more than 53 levels and the 
 # Random Forest won't be able to perform.
-nn_data = nn_data[, -1]
-str(nn_data)
+rf_data = rf_data[, -1]
+str(rf_data)
 
 
 # Split data
-n = nrow(nn_data)
-p = ncol(nn_data)
+n = nrow(rf_data)
+p = ncol(rf_data)
 
 set.seed(4322)
 train = sample(n, 0.8*n) # Split train/test as 8:2
 
-nn_test = nn_data[-train, ]
-nn_X_test = nn_test[, -9]
-nn_y_test = nn_test$HadHeartAttack
+rf_test = rf_data[-train, ]
+rf_X_test = rf_test[, -9]
+rf_y_test = rf_test$HadHeartAttack
 
 rf_model <- randomForest(HadHeartAttack ~., 
-                         data = nn_data,  subset = train,
-                         xtest = nn_X_test, ytest = nn_y_test,
+                         data = rf_data,  subset = train,
+                         xtest = rf_X_test, ytest = rf_y_test,
                          ntree = 1000, mtry =  sqrt(p),
                          importance = TRUE)
 rf_model
