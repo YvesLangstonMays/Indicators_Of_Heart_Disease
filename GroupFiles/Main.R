@@ -106,14 +106,88 @@ p = ncol(rf_data)
 set.seed(4322)
 train = sample(n, 0.8*n) # Split train/test as 8:2
 
+
+rf_train = rf_data[train, ]
 rf_test = rf_data[-train, ]
-rf_X_test = rf_test[, -9]
-rf_y_test = rf_test$HadHeartAttack
 
 rf_model <- randomForest(HadHeartAttack ~., 
-                         data = rf_data,  subset = train,
-                         xtest = rf_X_test, ytest = rf_y_test,
+                         data = rf_train,
                          ntree = 1000, mtry =  sqrt(p),
                          importance = TRUE)
-rf_model
+
+train_predictions = predict(rf_model, newdata = rf_train)
+train_accuracy = mean(train_predictions == rf_train$HadHeartAttack)
+cat("Training Accuracy:", train_accuracy, "\n")
+
+test_predictions = predict(rf_model, newdata = rf_test)
+test_accuracy = mean(test_predictions == rf_test$HadHeartAttack)
+cat("Training Accuracy:", test_accuracy, "\n")
+
+plot(rf_model)
+# We can see that error rate does not improved (or rather stay the same as we increase
+# the number of tree). So in this case, we will let ntree = 500 when we perform the model
+# ten times in order to reduce the time.
+
+# Perform the train/test split and apply to the random forest model 10 times
+test_error_table = vector("numeric", length = 10)
+for (i in 1:10)
+{
+  set.seed(4322)
+  sample_index = sample(n, 0.8  * n)
+  rf_train = rf_data[train, ]
+  rf_test = rf_data[-train, ]
+  
+  rf_model = randomForest(HadHeartAttack ~., 
+                          rf_train, 
+                          ntree = 500, mtry = sqrt(p),
+                          importance = TRUE)
+  
+  rf_predict = predict(rf_model, newdata = rf_test)
+  test_accuracy = mean(rf_predict == rf_test$HadHeartAttack)
+  test_error_table[i] = test_accuracy
+}
+
+# Print the mean of the test accuracy
+mean(test_error_table)
+
+# Analyzing the importance of each predictors on the response
+# We can use the lasted trained model 
 varImpPlot(rf_model)
+
+# Train the Random Forest with the predictor that are more important to the response variable.
+# So from the importance plot, we can pick out some variable to improve our model, such as:
+# HadAngina, HeightInMeters, WeightInKilograms, AgeCategory, BMI, Sex, SleepHours.
+
+# We will perform 1000 trees to see if there any improvement if we increase number of trees
+new_rf_model = randomForest(HadHeartAttack ~ HadAngina + HeightInMeters + WeightInKilograms + AgeCategory + BMI + Sex + SleepHours,
+                            rf_train,
+                            ntree = 1000, mtry = sqrt(p), 
+                            importance = TRUE)
+
+plot(new_rf_model)
+# As see from the plot, it seems like increase number of tree does not hepl much with reducing the test error rate. So 
+# again, we will just perform 500 tree so the sake of time save.
+
+# We will train the new model 10 times as well
+new_test_error_table = vector("numeric", length = 10)
+for (i in 1:10)
+{
+  set.seed(4322)
+  sample_index = sample(n, 0.8  * n)
+  rf_train = rf_data[train, ]
+  rf_test = rf_data[-train, ]
+  
+  new_rf_model = randomForest(HadHeartAttack ~ HadAngina + HeightInMeters + 
+                                                WeightInKilograms + AgeCategory + 
+                                                BMI + Sex + SleepHours,
+                              rf_train,
+                              ntree = 500, mtry = sqrt(p), 
+                              importance = TRUE)
+  
+  new_rf_predict = predict(new_rf_model, newdata = rf_test)
+  new_test_accuracy = mean(new_rf_predict == rf_test$HadHeartAttack)
+  new_test_error_table[i] = new_test_accuracy
+}
+
+# print the mean of 10 test accuracy rate
+mean(new_test_error_table)
