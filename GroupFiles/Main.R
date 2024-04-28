@@ -41,17 +41,34 @@ sum(is.na(data))
 #   coord_flip()
 
 # Removing outliers
-data <- data %>% 
+data <- data %>%
   filter(BMI <= 41)
 
-data <- data %>% 
+data <- data %>%
   filter(BMI >= 14)
 
-data <- data %>% 
+data <- data %>%
   filter(HeightInMeters <= 2.0)
 
-data <- data %>% 
+data <- data %>%
   filter(HeightInMeters >= 1.41)
+
+data <- data %>%
+  filter(MentalHealthDays < 10)
+
+data <- data %>%
+  filter(PhysicalHealthDays <= 8)
+
+data <- data %>%
+  filter(SleepHours < 11)
+
+data <- data %>%
+  filter(SleepHours > 3)
+
+
+outliers <- boxplot.stats(WeightInKilograms)$out
+data <- data %>%
+  filter(!(WeightInKilograms %in% outliers))
 
 # # Checking Data
 # ggplot(data, aes(y = BMI)) +
