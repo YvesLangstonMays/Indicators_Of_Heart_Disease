@@ -89,7 +89,10 @@ for (i in 1:10) {
   # Evaluate Model Performance
   logistic_accuracy <- mean(logistic_predictions == rf_test$HadHeartAttack)
   logistic_error_table[i] <- logistic_accuracy
-
+  
+  # Print test prediction error for each iteration
+  cat("Test Prediction Error (Iteration", i, "):", 1 - logistic_accuracy, "\n")
+  
   # Print summary of the logistic regression model
   print(summary(logistic_model))
 
