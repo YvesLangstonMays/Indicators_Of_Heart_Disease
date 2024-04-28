@@ -95,13 +95,14 @@ train = sample(n, 0.8*n)
 rf_train = rf_data[train, ]
 rf_test = rf_data[-train, ]
 print(Sys.time())
-cat("Model 1 starting with 1000 trees, mtry = sqrt p", Sys.time())
+cat("Model 1 starting with 1000 trees, mtry = sqrt p")
 rf_model <- ranger(HadHeartAttack ~ ., 
                    data = rf_train,
                    num.trees = 1000, mtry =  sqrt(p),
                    num.threads = 8, importance = "impurity")
 
-cat("Model 1 ending with 1000 trees, mtry = sqrt p", Sys.time())
+cat("Model 1 ending with 1000 trees, mtry = sqrt p")
+print(Sys.time())
 train_predictions = predict(rf_model, data = rf_train)$predictions
 train_accuracy = mean(train_predictions == rf_train$HadHeartAttack)
 cat("Training Accuracy:", train_accuracy, "\n")
@@ -161,5 +162,5 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        y = "Importance") +
   coord_flip()  
 
-
+print("Complete")
 
