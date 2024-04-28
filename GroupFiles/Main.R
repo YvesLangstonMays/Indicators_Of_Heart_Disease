@@ -1,8 +1,15 @@
+install.packages("beepr")
+install.packages("ROSE")
 install.packages("caret")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("randomForest")
 
+library(beepr)
+library(ROSE)
+library(caret)
 library(ggplot2)
 library(dplyr)
-library(caret)
 library(randomForest)
 
 data <- read.csv("./GroupFiles/Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
@@ -70,6 +77,7 @@ outliers <- boxplot.stats(WeightInKilograms)$out
 data <- data %>%
   filter(!(WeightInKilograms %in% outliers))
 
+
 # # Checking Data
 # ggplot(data, aes(y = BMI)) +
 #   geom_boxplot(outlier.colour = "red", outlier.shape = 1, notch = TRUE, ) +
@@ -117,10 +125,10 @@ train_data = data[sample,]
 test_data = data[-sample,]
 
 # There is a significant difference in the number of Yes/No in our response variables
+# This may lead to much higher accuracy in predictions
+# Other measures need to be considered to evaluate the accuracy of the model
 plot(data$HadHeartAttack)
 
-<<<<<<< HEAD
- 
 
 PC4.tree <- tree(HadHeartAttack ~ PhysicalHealthDays + PhysicalActivities +
                    HadCOPD + HadArthritis + DifficultyConcentrating + 
@@ -141,7 +149,6 @@ pruned = prune.tree(PC4.tree, best = 3)
 plot(pruned)
 text(pruned, pretty = 0)
 
-=======
 # We will use a sample of the data. In this case, we will only use half of the data
 num_row = nrow(data)
 set.seed(4322)
@@ -267,4 +274,4 @@ for (i in 1:10)
 
 # print the mean of 10 test accuracy rate
 mean(new_test_error_table)
->>>>>>> 4381372885e20855f4a85986fd991188700c20e5
+
