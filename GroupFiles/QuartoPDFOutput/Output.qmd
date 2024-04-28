@@ -1,0 +1,173 @@
+---
+title: "ProjectOutput"
+format: pdf
+editor: visual
+---
+
+```{# install.packages("beepr")}
+# install.packages("ROSE")
+# install.packages("caret")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("randomForest")
+# install.packages("tree")
+# install.packages("ranger")
+
+
+library(ranger)
+library(beepr)
+library(ROSE)
+library(caret)
+library(ggplot2)
+library(dplyr)
+library(randomForest)
+library(tree)
+
+data <- read.csv("./Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
+summary(data)
+attach(data)
+
+data <- data %>%
+  filter(BMI <= 41, BMI >= 14,
+         MentalHealthDays < 10,
+         PhysicalHealthDays <= 8,
+         SleepHours < 11, SleepHours > 3)
+
+outliers <- boxplot.stats(WeightInKilograms)$out
+data <- data %>%
+  filter(!(WeightInKilograms %in% outliers))
+
+dim(data)
+
+# Set seed for reproducibility 
+set.seed(4322)
+
+# Sample data
+num_row = nrow(data)
+new_data = data[sample(num_row, num_row*0.5),]
+
+# Function to convert categorical variables
+check_and_convert_categorical <- function(test_data) {
+  for (col_name in names(test_data)) {
+    if (!is.factor(test_data[[col_name]]) && (is.character(test_data[[col_name]]) || length(unique(test_data[[col_name]])) <= 10)) {
+      test_data[[col_name]] <- as.numeric(as.factor(test_data[[col_name]]))
+    }
+  }
+  return(test_data)
+}
+rf_data <- check_and_convert_categorical(new_data)
+
+# Force conversion to factor for AgeCategory
+rf_data$AgeCategory = as.factor(rf_data$AgeCategory)
+
+# Map states to regions
+northeast <- c("Maine", "New Hampshire", "Vermont", "Massachusetts", "Rhode Island", 
+               "Connecticut", "New York", "New Jersey", "Pennsylvania")
+midwest <- c("Ohio", "Michigan", "Indiana", "Illinois", "Wisconsin", "Minnesota", 
+             "Iowa", "Missouri", "North Dakota", "South Dakota", "Nebraska", "Kansas")
+south <- c("Delaware", "Maryland", "District of Columbia", "Virginia", "West Virginia", 
+           "Kentucky", "North Carolina", "South Carolina", "Tennessee", "Georgia", 
+           "Florida", "Alabama", "Mississippi", "Arkansas", "Louisiana", "Texas", "Oklahoma")
+west <- c("Montana", "Idaho", "Wyoming", "Colorado", "New Mexico", "Arizona", 
+          "Utah", "Nevada", "California", "Oregon", "Washington", "Alaska", "Hawaii")
+territories <- c("Puerto Rico", "Guam", "Virgin Islands")
+
+data$Region <- with(data, factor(
+  ifelse(State %in% northeast, "Northeast",
+         ifelse(State %in% midwest, "Midwest",
+                ifelse(State %in% south, "South",
+                       ifelse(State %in% west, "West", 
+                              ifelse(State %in% territories, "Territories", "Other")
+                       )
+                )
+         )
+  )
+))
+
+data <- data[, !(names(data) %in% "State")]
+
+if(any(is.na(data$Region))) {
+  warning("Some states were not categorized into any region.")
+}
+
+# Split data
+n = nrow(rf_data)
+p = ncol(rf_data)
+
+set.seed(4322)
+train = sample(n, 0.8*n) 
+
+rf_train = rf_data[train, ]
+rf_test = rf_data[-train, ]
+print(Sys.time())
+cat("Model 1 starting with 1000 trees, mtry = sqrt p")
+rf_model <- ranger(HadHeartAttack ~ ., 
+                   data = rf_train,
+                   num.trees = 1000, mtry =  sqrt(p),
+                   num.threads = 8, importance = "impurity")
+
+cat("Model 1 ending with 1000 trees, mtry = sqrt p")
+print(Sys.time())
+train_predictions = predict(rf_model, data = rf_train)$predictions
+train_accuracy = mean(train_predictions == rf_train$HadHeartAttack)
+cat("Training Accuracy:", train_accuracy, "\n")
+
+test_predictions = predict(rf_model, data = rf_test)$predictions
+test_accuracy = mean(test_predictions == rf_test$HadHeartAttack)
+cat("Test Accuracy:", test_accuracy, "\n")
+
+importance_data <- as.data.frame(rf_model$variable.importance)
+names(importance_data) <- c("Importance")
+importance_data$Variable <- rownames(importance_data)
+importance_data <- importance_data[order(importance_data$Importance, decreasing = TRUE),]
+
+
+ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Variable Importance from Ranger Model",
+       x = "Variables",
+       y = "Importance") +
+  coord_flip()  
+
+
+test_error_table <- numeric(10)
+for (i in 1:10)
+{
+  set.seed(4322)
+  train = sample(n, 0.8 * n)
+  rf_train = rf_data[train, ]
+  rf_test = rf_data[-train, ]
+  print(Sys.time())
+  rf_model <- ranger(HadHeartAttack ~ ., 
+                     data = rf_train, 
+                     num.trees = 500, mtry = sqrt(p),
+                     num.threads = 8, importance = "impurity")
+  
+  test_predictions = predict(rf_model, data = rf_test)$predictions
+  test_accuracy = mean(test_predictions == rf_test$HadHeartAttack)
+  test_error_table[i] = test_accuracy
+}
+
+# Print the mean of the test accuracy
+mean(test_error_table)
+
+# Importance
+importance_data <- as.data.frame(rf_model$variable.importance)
+names(importance_data) <- c("Importance")
+importance_data$Variable <- rownames(importance_data)
+importance_data <- importance_data[order(importance_data$Importance, decreasing = TRUE),]
+
+# Plotting variable importance 
+ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Variable Importance from Ranger Model",
+       x = "Variables",
+       y = "Importance") +
+  coord_flip()  
+
+print("Complete")
+
+
+```
