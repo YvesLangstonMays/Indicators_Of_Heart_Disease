@@ -1,10 +1,15 @@
+# Install necessary packages
 # install.packages("beepr")
 # install.packages("ROSE")
 # install.packages("caret")
 # install.packages("ggplot2")
 # install.packages("dplyr")
 # install.packages("randomForest")
+# install.packages("tree")
+# install.packages("ranger")
 
+
+library(ranger)
 library(beepr)
 library(ROSE)
 library(caret)
@@ -14,35 +19,29 @@ library(randomForest)
 library(tree)
 
 data <- read.csv("./Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
-
 summary(data)
-
 attach(data)
 
 data <- data %>%
-  filter(BMI <= 41, BMI >= 14, HeightInMeters <= 2.0, HeightInMeters >= 1.41,
-         MentalHealthDays < 10, PhysicalHealthDays <= 8, SleepHours < 11, SleepHours > 3)
+  filter(BMI <= 41, BMI >= 14,
+         MentalHealthDays < 10,
+         PhysicalHealthDays <= 8,
+         SleepHours < 11, SleepHours > 3)
 
 outliers <- boxplot.stats(WeightInKilograms)$out
 data <- data %>%
   filter(!(WeightInKilograms %in% outliers))
 
- dim(data)
- summary(data)
+dim(data)
 
-# There is a significant difference in the number of Yes/No in our response variables 
-################################################################################################
 # Set seed for reproducibility 
 set.seed(4322)
 
-# We will use a sample of the data. In this case, we will only use half of the data
+# Sample data
 num_row = nrow(data)
 new_data = data[sample(num_row, num_row*0.5),]
 
-# Random Forest
-rf_data = new_data
-
-# Performing as.factor() on other categorical variables
+# Function to convert categorical variables
 check_and_convert_categorical <- function(test_data) {
   for (col_name in names(test_data)) {
     if (!is.factor(test_data[[col_name]]) && (is.character(test_data[[col_name]]) || length(unique(test_data[[col_name]])) <= 10)) {
@@ -53,11 +52,10 @@ check_and_convert_categorical <- function(test_data) {
 }
 rf_data <- check_and_convert_categorical(new_data)
 
-# The as.factor() function wasn't apply to the AgaCategory column since it has 13
-# levels of unique values, but we will force perform as.factor() on it anyway
+# Force conversion to factor for AgeCategory
 rf_data$AgeCategory = as.factor(rf_data$AgeCategory)
 
-# Mapping states to regions
+# Map states to regions
 northeast <- c("Maine", "New Hampshire", "Vermont", "Massachusetts", "Rhode Island", 
                "Connecticut", "New York", "New Jersey", "Pennsylvania")
 midwest <- c("Ohio", "Michigan", "Indiana", "Illinois", "Wisconsin", "Minnesota", 
@@ -87,98 +85,81 @@ if(any(is.na(data$Region))) {
   warning("Some states were not categorized into any region.")
 }
 
-
 # Split data
 n = nrow(rf_data)
 p = ncol(rf_data)
 
 set.seed(4322)
-train = sample(n, 0.8*n) # Split train/test as 8:2
-
+train = sample(n, 0.8*n) 
 
 rf_train = rf_data[train, ]
 rf_test = rf_data[-train, ]
+print(Sys.time())
+cat("Model 1 starting with 1000 trees, mtry = sqrt p", Sys.time())
+rf_model <- ranger(HadHeartAttack ~ ., 
+                   data = rf_train,
+                   num.trees = 1000, mtry =  sqrt(p),
+                   num.threads = 8, importance = "impurity")
 
-rf_model <- randomForest(HadHeartAttack ~., 
-                         data = rf_train,
-                         ntree = 1000, mtry =  sqrt(p),
-                         importance = TRUE)
-
-train_predictions = predict(rf_model, newdata = rf_train)
+cat("Model 1 ending with 1000 trees, mtry = sqrt p", Sys.time())
+train_predictions = predict(rf_model, data = rf_train)$predictions
 train_accuracy = mean(train_predictions == rf_train$HadHeartAttack)
 cat("Training Accuracy:", train_accuracy, "\n")
 
-test_predictions = predict(rf_model, newdata = rf_test)
+test_predictions = predict(rf_model, data = rf_test)$predictions
 test_accuracy = mean(test_predictions == rf_test$HadHeartAttack)
-cat("Training Accuracy:", test_accuracy, "\n")
+cat("Test Accuracy:", test_accuracy, "\n")
 
-plot(rf_model)
-# We can see that error rate does not improved (or rather stay the same as we increase
-# the number of tree). So in this case, we will let ntree = 500 when we perform the model
-# ten times in order to reduce the time.
+importance_data <- as.data.frame(rf_model$variable.importance)
+names(importance_data) <- c("Importance")
+importance_data$Variable <- rownames(importance_data)
+importance_data <- importance_data[order(importance_data$Importance, decreasing = TRUE),]
 
-# Perform the train/test split and apply to the random forest model 10 times
+
+ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Variable Importance from Ranger Model",
+       x = "Variables",
+       y = "Importance") +
+  coord_flip()  
+
+
 test_error_table <- numeric(10)
-
 for (i in 1:10)
 {
   set.seed(4322)
-  sample_index = sample(n, 0.8  * n)
+  train = sample(n, 0.8 * n)
   rf_train = rf_data[train, ]
   rf_test = rf_data[-train, ]
+  print(Sys.time())
+  rf_model <- ranger(HadHeartAttack ~ ., 
+                     data = rf_train, 
+                     num.trees = 500, mtry = sqrt(p),
+                     num.threads = 8, importance = "impurity")
   
-  rf_model = randomForest(HadHeartAttack ~., 
-                          rf_train, 
-                          ntree = 500, mtry = sqrt(p),
-                          importance = TRUE)
-  
-  rf_predict = predict(rf_model, newdata = rf_test)
-  test_accuracy = mean(rf_predict == rf_test$HadHeartAttack)
+  test_predictions = predict(rf_model, data = rf_test)$predictions
+  test_accuracy = mean(test_predictions == rf_test$HadHeartAttack)
   test_error_table[i] = test_accuracy
 }
 
 # Print the mean of the test accuracy
 mean(test_error_table)
 
-# Analyzing the importance of each predictors on the response
-# We can use the lasted trained model 
-varImpPlot(rf_model)
+# Importance
+importance_data <- as.data.frame(rf_model$variable.importance)
+names(importance_data) <- c("Importance")
+importance_data$Variable <- rownames(importance_data)
+importance_data <- importance_data[order(importance_data$Importance, decreasing = TRUE),]
 
-# Train the Random Forest with the predictor that are more important to the response variable.
-# So from the importance plot, we can pick out some variable to improve our model, such as:
-# HadAngina, HeightInMeters, WeightInKilograms, AgeCategory, BMI, Sex, SleepHours.
+# Plotting variable importance 
+ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Variable Importance from Ranger Model",
+       x = "Variables",
+       y = "Importance") +
+  coord_flip()  
 
-# We will perform 1000 trees to see if there any improvement if we increase number of trees
-new_rf_model = randomForest(HadHeartAttack ~ HadAngina + HeightInMeters + WeightInKilograms + AgeCategory + BMI + Sex + SleepHours,
-                            rf_train,
-                            ntree = 1000, mtry = sqrt(p), 
-                            importance = TRUE)
 
-plot(new_rf_model)
-# As see from the plot, it seems like increase number of tree does not hepl much with reducing the test error rate. So 
-# again, we will just perform 500 tree so the sake of time save.
-
-# We will train the new model 10 times as well
-new_test_error_table <- numeric(10)
-for (i in 1:10)
-{
-  set.seed(4322)
-  sample_index = sample(n, 0.8  * n)
-  rf_train = rf_data[train, ]
-  rf_test = rf_data[-train, ]
-  
-  new_rf_model = randomForest(HadHeartAttack ~ HadAngina + HeightInMeters + 
-                                                WeightInKilograms + AgeCategory + 
-                                                BMI + Sex + SleepHours,
-                              rf_train,
-                              ntree = 500, mtry = sqrt(p), 
-                              importance = TRUE)
-  
-  new_rf_predict = predict(new_rf_model, newdata = rf_test)
-  new_test_accuracy = mean(new_rf_predict == rf_test$HadHeartAttack)
-  new_test_error_table[i] = new_test_accuracy
-}
-
-# print the mean of 10 test accuracy rate
-mean(new_test_error_table)
 
