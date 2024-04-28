@@ -1,3 +1,17 @@
+# Install necessary packages
+# install.packages("beepr")
+# install.packages("ROSE")
+# install.packages("caret")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("randomForest")
+# install.packages("tree")
+# install.packages("ranger")
+# install.packages("car")
+# install.packages("leaps")
+install.packages("parallel")
+
+library(parallel)
 library(ggplot2)
 library(dplyr)
 library(caret)
@@ -5,24 +19,19 @@ library(car)
 library(leaps)
 library(MASS)
 
-data <- read.csv("C:/Users/mvsta/OneDrive/Documents/groupproject/heart_2022_no_nans.csv")
+data <- read.csv("./Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
+summary(data)
+attach(data)
 
+data <- data %>%
+  filter(BMI <= 41, BMI >= 14,
+         MentalHealthDays < 10,
+         PhysicalHealthDays <= 8,
+         SleepHours < 11, SleepHours > 3)
 
-# Cleaning data
-sum(is.na(data))
-
-# Removing outliers
-data <- data %>% 
-  filter(BMI <= 41)
-
-data <- data %>% 
-  filter(BMI >= 14)
-
-data <- data %>% 
-  filter(HeightInMeters <= 2.0)
-
-data <- data %>% 
-  filter(HeightInMeters >= 1.41)
+outliers <- boxplot.stats(WeightInKilograms)$out
+data <- data %>%
+  filter(!(WeightInKilograms %in% outliers))
 
 # We will use a sample of the data. In this case, we will only use half of the data
 num_row = nrow(data)
@@ -69,8 +78,23 @@ log_test = log_data[-train, ]
 
 log_model <- glm(HadHeartAttack ~., data = log_train)
 
-step.model <- stepAIC(log_model, direction = "backward", trace=FALSE)
-summary(step.model)
+# step.model <- stepAIC(log_model, direction = "backward", trace=FALSE)
+# Replacing with parallel processing compatible function
+####################################################################
+stepwise_selection <- function(model) {
+  stepAIC(model, direction = "backward", trace = FALSE)
+}
+
+num_cores <-8
+
+step_models <- mclapply(1:num_cores, function(i) {
+  stepwise_selection(log_model)
+}, mc.cores = num_cores)
+
+best_model <- step_models[[which.min(sapply(step_models, AIC))]]
+
+####################################################################
+best_model
 
 #Getting accuracies
 convert_prob_to_class <- function(probs, threshold = 0.5) {
