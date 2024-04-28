@@ -20,45 +20,17 @@ summary(data)
 attach(data)
 
 data <- data %>%
-  filter(BMI <= 41)
-
-data <- data %>%
-  filter(BMI >= 14)
-
-data <- data %>%
-  filter(HeightInMeters <= 2.0)
-
-data <- data %>%
-  filter(HeightInMeters >= 1.41)
-
-data <- data %>%
-  filter(MentalHealthDays < 10)
-
-data <- data %>%
-  filter(PhysicalHealthDays <= 8)
-
-data <- data %>%
-  filter(SleepHours < 11)
-
-data <- data %>%
-  filter(SleepHours > 3)
-
+  filter(BMI <= 41, BMI >= 14, HeightInMeters <= 2.0, HeightInMeters >= 1.41,
+         MentalHealthDays < 10, PhysicalHealthDays <= 8, SleepHours < 11, SleepHours > 3)
 
 outliers <- boxplot.stats(WeightInKilograms)$out
 data <- data %>%
   filter(!(WeightInKilograms %in% outliers))
 
- 
  dim(data)
  summary(data)
 
-# There is a significant difference in the number of Yes/No in our response variables
-
- 
- 
- 
- 
- 
+# There is a significant difference in the number of Yes/No in our response variables 
 ################################################################################################
 # Set seed for reproducibility 
 set.seed(4322)
