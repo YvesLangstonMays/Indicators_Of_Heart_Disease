@@ -76,9 +76,7 @@ for (i in 1:10) {
   levels(rf_test$HadHeartAttack) <- c("0", "1")
 
   # Logistic Regression Model
-  logistic_model <- glm(HadHeartAttack ~ HadAngina + HeightInMeters +
-                        WeightInKilograms + AgeCategory +
-                        BMI + Sex + SleepHours,
+  logistic_model <- glm(HadHeartAttack ~ .,
                         data = rf_train,
                         family = binomial)
 
