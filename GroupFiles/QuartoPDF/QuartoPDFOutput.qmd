@@ -1,13 +1,10 @@
-# Install necessary packages
-# install.packages("beepr")
-# install.packages("ROSE")
-# install.packages("caret")
-# install.packages("ggplot2")
-# install.packages("dplyr")
-# install.packages("randomForest")
-# install.packages("tree")
-# install.packages("ranger")
+---
+title: "Output"
+format: pdf
+editor: visual
+---
 
+```{r}
 
 library(ranger)
 library(beepr)
@@ -18,9 +15,15 @@ library(dplyr)
 library(randomForest)
 library(tree)
 
-data <- read.csv("./Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
+
+
+data <- read.csv("../Indicators_Of_Heart_Disease/2022/heart_2022_no_nans.csv")
 summary(data)
-attach(data)
+
+suppressMessages({
+  attach(data)
+})
+
 
 data <- data %>%
   filter(BMI <= 41, BMI >= 14,
@@ -34,6 +37,9 @@ data <- data %>%
 
 dim(data)
 
+```
+
+```{r}
 # Set seed for reproducibility 
 set.seed(4322)
 
@@ -84,7 +90,9 @@ data <- data[, !(names(data) %in% "State")]
 if(any(is.na(data$Region))) {
   warning("Some states were not categorized into any region.")
 }
+```
 
+```{r}
 # Split data
 n = nrow(rf_data)
 p = ncol(rf_data)
@@ -101,7 +109,7 @@ rf_model <- ranger(HadHeartAttack ~ .,
                    num.trees = 500, mtry =  sqrt(p),
                    num.threads = 8, importance = "impurity")
 
-cat("Model 1 ending with 1000 trees, mtry = sqrt p")
+cat("Model 1 ending with 500 trees, mtry = sqrt p")
 print(Sys.time())
 train_predictions = predict(rf_model, data = rf_train)$predictions
 train_accuracy = mean(train_predictions == rf_train$HadHeartAttack)
@@ -124,13 +132,11 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        x = "Variables",
        y = "Importance") +
   coord_flip()  
+```
 
-# We can see that error rate does not improved (or rather stay the same as we increase
-# the number of tree). So in this case, we will let ntree = 500 when we perform the model
-# ten times in order to reduce the time.
+Perform the train/test split and apply to the random forest model 10 times
 
-
-# Perform the train/test split and apply to the random forest model 10 times
+```{r}
 test_error_table <- numeric(10)
 for (i in 1:10)
 {
@@ -150,8 +156,8 @@ for (i in 1:10)
 }
 
 # Print the mean of the test accuracy
-mean(test_error_table)
-
+test_acc_mean <- mean(test_error_table)
+cat("Mean of the test accuracy", test_acc_mean)
 # Importance
 importance_data <- as.data.frame(rf_model$variable.importance)
 names(importance_data) <- c("Importance")
@@ -166,10 +172,11 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        x = "Variables",
        y = "Importance") +
   coord_flip()  
+```
 
+We can see that error rate does not improved (or rather stay the same as we increase# the number of tree). So in this case, we will let ntree = 500 when we perform the model# ten times in order to reduce the time.
 
-
-
+```{r}
 print(Sys.time())
 cat("Model 3 starting with 500 trees, mtry = sqrt p")
 rf_model <- ranger(HadHeartAttack ~ HadAngina + HeightInMeters + 
@@ -202,8 +209,4 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        x = "Variables",
        y = "Importance") +
   coord_flip() 
-
-
-
-print("Complete")
-
+```
