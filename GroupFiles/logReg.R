@@ -9,7 +9,7 @@
 # install.packages("ranger")
 # install.packages("car")
 # install.packages("leaps")
-install.packages("parallel")
+# install.packages("parallel")
 
 library(parallel)
 library(ggplot2)
@@ -81,6 +81,9 @@ log_model <- glm(HadHeartAttack ~., data = log_train)
 # step.model <- stepAIC(log_model, direction = "backward", trace=FALSE)
 # Replacing with parallel processing compatible function
 ####################################################################
+
+print("Starting...")
+print(Sys.time())
 stepwise_selection <- function(model) {
   stepAIC(model, direction = "backward", trace = FALSE)
 }
@@ -90,7 +93,8 @@ num_cores <-8
 step_models <- mclapply(1:num_cores, function(i) {
   stepwise_selection(log_model)
 }, mc.cores = num_cores)
-
+print("Complete...")
+print(Sys.time())
 best_model <- step_models[[which.min(sapply(step_models, AIC))]]
 
 ####################################################################
