@@ -104,11 +104,14 @@ best_model
 convert_prob_to_class <- function(probs, threshold = 0.5) {
   return(ifelse(probs > threshold, 1, 0))
 }
+
+train_labels = log_train$HadHeartAttack
 train_predictions = predict(log_model, newdata = log_train, type = "response")
 train_predictions_class = convert_prob_to_class(train_predictions)
 train_accuracy = mean(train_predictions_class == train_labels)
 cat("Training Accuracy:", train_accuracy, "\n")
 
+test_labels = log_test$HadHeartAttack
 test_predictions = predict(log_model, newdata = log_test, type = "response")
 test_predictions_class = convert_prob_to_class(test_predictions)
 test_accuracy = mean(test_predictions_class == test_labels)
