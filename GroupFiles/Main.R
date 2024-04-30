@@ -67,7 +67,7 @@ west <- c("Montana", "Idaho", "Wyoming", "Colorado", "New Mexico", "Arizona",
           "Utah", "Nevada", "California", "Oregon", "Washington", "Alaska", "Hawaii")
 territories <- c("Puerto Rico", "Guam", "Virgin Islands")
 
-data$Region <- with(data, factor(
+rf_data$Region <- with(rf_data, factor(
   ifelse(State %in% northeast, "Northeast",
          ifelse(State %in% midwest, "Midwest",
                 ifelse(State %in% south, "South",
@@ -79,9 +79,9 @@ data$Region <- with(data, factor(
   )
 ))
 
-data <- data[, !(names(data) %in% "State")]
+rf_data <- rf_data[, !(names(rf_data) %in% "State")]
 
-if(any(is.na(data$Region))) {
+if(any(is.na(rf_data$Region))) {
   warning("Some states were not categorized into any region.")
 }
 
@@ -95,10 +95,10 @@ train = sample(n, 0.8*n)
 rf_train = rf_data[train, ]
 rf_test = rf_data[-train, ]
 print(Sys.time())
-cat("Model 1 starting with 500 trees, mtry = sqrt p")
+cat("Model 1 starting with 1000 trees, mtry = sqrt p")
 rf_model <- ranger(HadHeartAttack ~ ., 
                    data = rf_train,
-                   num.trees = 500, mtry =  sqrt(p),
+                   num.trees = 1000, mtry =  sqrt(p),
                    num.threads = 8, importance = "impurity")
 
 cat("Model 1 ending with 1000 trees, mtry = sqrt p")
@@ -125,11 +125,6 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        y = "Importance") +
   coord_flip()  
 
-# We can see that error rate does not improved (or rather stay the same as we increase
-# the number of tree). So in this case, we will let ntree = 500 when we perform the model
-# ten times in order to reduce the time.
-
-
 # Perform the train/test split and apply to the random forest model 10 times
 test_error_table <- numeric(10)
 for (i in 1:10)
@@ -151,6 +146,7 @@ for (i in 1:10)
 
 # Print the mean of the test accuracy
 mean(test_error_table)
+cat(test_error_table, sep = "\n")
 
 # Importance
 importance_data <- as.data.frame(rf_model$variable.importance)
@@ -168,15 +164,13 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
   coord_flip()  
 
 
-
-
 print(Sys.time())
-cat("Model 3 starting with 500 trees, mtry = sqrt p")
+cat("Model 3 starting with 1000 trees, mtry = sqrt p")
 rf_model <- ranger(HadHeartAttack ~ HadAngina + HeightInMeters + 
                      WeightInKilograms + AgeCategory + 
-                     BMI + Sex + SleepHours, 
+                     BMI + SleepHours, 
                    data = rf_train,
-                   num.trees = 500, mtry =  sqrt(p),
+                   num.trees = 1000, mtry =  sqrt(6),
                    num.threads = 8, importance = "impurity")
 
 cat("Model 3 ending with 500 trees, mtry = sqrt p")
@@ -203,7 +197,4 @@ ggplot(importance_data, aes(x = reorder(Variable, Importance), y = Importance)) 
        y = "Importance") +
   coord_flip() 
 
-
-
 print("Complete")
-
